@@ -1,0 +1,106 @@
+resources:
+  jobs:
+    credlake_end_to_end:
+      name: "[${bundle.target}] CredLake | Pipeline end-to-end"
+      description: Pipeline Lakehouse financeiro com Bronze, Silver, Gold e controles de qualidade.
+      max_concurrent_runs: 1
+      queue:
+        enabled: true
+      tags:
+        project: credlake
+        domain: credit-risk
+        owner: lucas-vidal-silva
+
+      tasks:
+        - task_key: setup
+          notebook_task:
+            notebook_path: ../src/credlake/00_setup.py
+            base_parameters:
+              catalog: ${var.catalog}
+
+        - task_key: generate_demo_sources
+          depends_on:
+            - task_key: setup
+          notebook_task:
+            notebook_path: ../src/credlake/01_generate_source_data.py
+            base_parameters:
+              catalog: ${var.catalog}
+              reference_date: ${var.reference_date}
+              force_regenerate: "false"
+
+        - task_key: bronze_batch
+          depends_on:
+            - task_key: generate_demo_sources
+          notebook_task:
+            notebook_path: ../src/credlake/02_bronze_batch.py
+            base_parameters:
+              catalog: ${var.catalog}
+
+        - task_key: bronze_snapshots
+          depends_on:
+            - task_key: generate_demo_sources
+          notebook_task:
+            notebook_path: ../src/credlake/03_bronze_snapshots.py
+            base_parameters:
+              catalog: ${var.catalog}
+              reference_date: ${var.reference_date}
+
+        - task_key: bronze_payments
+          depends_on:
+            - task_key: generate_demo_sources
+          notebook_task:
+            notebook_path: ../src/credlake/04_bronze_payments.py
+            base_parameters:
+              catalog: ${var.catalog}
+
+        - task_key: silver_dimensions
+          depends_on:
+            - task_key: bronze_batch
+            - task_key: bronze_snapshots
+          notebook_task:
+            notebook_path: ../src/credlake/05_silver_dimensions.py
+            base_parameters:
+              catalog: ${var.catalog}
+
+        - task_key: silver_contracts
+          depends_on:
+            - task_key: silver_dimensions
+          notebook_task:
+            notebook_path: ../src/credlake/06_silver_contracts.py
+            base_parameters:
+              catalog: ${var.catalog}
+
+        - task_key: silver_payments
+          depends_on:
+            - task_key: bronze_payments
+            - task_key: bronze_snapshots
+          notebook_task:
+            notebook_path: ../src/credlake/07_silver_payments.py
+            base_parameters:
+              catalog: ${var.catalog}
+
+        - task_key: silver_installments
+          depends_on:
+            - task_key: silver_contracts
+            - task_key: silver_payments
+          notebook_task:
+            notebook_path: ../src/credlake/08_silver_installments.py
+            base_parameters:
+              catalog: ${var.catalog}
+
+        - task_key: gold_portfolio
+          depends_on:
+            - task_key: silver_installments
+          notebook_task:
+            notebook_path: ../src/credlake/09_gold_portfolio.py
+            base_parameters:
+              catalog: ${var.catalog}
+
+        - task_key: quality_observability
+          depends_on:
+            - task_key: gold_portfolio
+          notebook_task:
+            notebook_path: ../src/credlake/10_quality_observability.py
+            base_parameters:
+              catalog: ${var.catalog}
+

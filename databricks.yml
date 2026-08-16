@@ -1,0 +1,38 @@
+bundle:
+  name: credito-analytics-databricks
+
+include:
+  - resources/*.yml
+
+sync:
+  include:
+    - src/**
+    - docs/**
+    - README.md
+
+variables:
+  catalog:
+    description: Catálogo Unity Catalog isolado do projeto.
+    default: credlake
+  reference_date:
+    description: Data de referência da carteira sintética.
+    default: "2026-08-01"
+
+targets:
+  dev:
+    default: true
+    mode: development
+    variables:
+      catalog: credlake
+      reference_date: "2026-08-01"
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+
+  prod:
+    mode: production
+    variables:
+      catalog: credlake
+      reference_date: "2026-08-01"
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+
